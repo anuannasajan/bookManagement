@@ -1,16 +1,16 @@
 package com.edstem.ProjectManagement.service;
 
+import com.edstem.ProjectManagement.contract.BookResponse;
+import com.edstem.ProjectManagement.exception.ResourceNotFoundException;
 import com.edstem.ProjectManagement.model.Book;
 import com.edstem.ProjectManagement.repository.BookRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-
-
 import java.util.List;
-import java.util.Optional;
-
+import java.util.stream.Collectors;
+@Slf4j
 @Service
 public class BookService {
     private final BookRepository bookRepository;
@@ -20,39 +20,45 @@ public class BookService {
     public BookService(BookRepository bookRepository, ModelMapper modelMapper) {
         this.bookRepository = bookRepository;
         this.modelMapper = modelMapper;
-
-        this.modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
     }
 
 
-    public List<Book> getAllBooks() {
-        return bookRepository.findAll();
+    public List<BookResponse> getAllBooks() {
+        List<Book> books = this.bookRepository.findAll();
+        return books
+                .stream()
+                .map(book -> modelMapper.map(book, BookResponse.class))
+                .collect(Collectors.toList());
     }
 
-    public Optional<Book> getBookById(Long id) {
-        return bookRepository.findById(id);
+    public BookResponse getBookById(Long id) {
+        Book book = this.bookRepository.findById(id).orElseThrow(() ->{
+            log.error("Book with id: {} not found",id);
+            return new ResourceNotFoundException(id);
+        });
+        return modelMapper.map(book, BookResponse.class);
     }
 
-    public Book addBook(Book book) {
-        Book bookEntity = modelMapper.map(book, Book.class);
-        Book savedBookEntity = bookRepository.save(bookEntity);
-        return modelMapper.map(savedBookEntity, Book.class);
+    public BookResponse addBook(BookResponse book) {
+        Book savedBookEntity = bookRepository.save(modelMapper.map(book, Book.class));
+        return modelMapper.map(savedBookEntity, BookResponse.class);
     }
 
-    public Book updateBook(Long id, Book updatedBook) {
-        Optional<Book> optionalBookEntity = bookRepository.findById(id);
-        if (optionalBookEntity.isPresent()) {
-            Book bookEntity = optionalBookEntity.get();
-            modelMapper.map(updatedBook, bookEntity);
-            Book updatedBookEntity = bookRepository.save(bookEntity);
-            return modelMapper.map(updatedBookEntity, Book.class);
-        } else {
-            throw new IllegalArgumentException("Book not found with id: " + id);
-        }
+    public BookResponse updateBook(Long id, BookResponse book) {
+        Book existingBook = bookRepository.findById(id).orElseThrow(() -> {
+            log.error("Book with id: {} not found", id);
+            return new ResourceNotFoundException(id);
+        });
+        modelMapper.map(book, existingBook);
+        Book updatedBook = bookRepository.save(existingBook);
+        return modelMapper.map(updatedBook, BookResponse.class);
     }
 
 
     public void deleteBook(Long id) {
+        if(!bookRepository.existsById(id)){
+            throw new ResourceNotFoundException(id);
+        }
         bookRepository.deleteById(id);
     }
 }

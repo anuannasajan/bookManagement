@@ -1,14 +1,14 @@
 package com.edstem.ProjectManagement.controller;
 
+import com.edstem.ProjectManagement.contract.BookResponse;
 import com.edstem.ProjectManagement.model.Book;
 import com.edstem.ProjectManagement.service.BookService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/books")
@@ -21,27 +21,31 @@ public class BookController {
     }
 
     @GetMapping
-    public List<Book> getAllBooks() {
-        return bookService.getAllBooks();
+    public ResponseEntity<List<BookResponse>> getAllBooks() {
+        return new ResponseEntity<>(bookService.getAllBooks(),HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Book> getBookById(@PathVariable Long id) {
-        Optional<Book> optionalBook = bookService.getBookById(id);
-        return optionalBook.map(book -> ResponseEntity.ok().body(book))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<BookResponse>getBookById(@PathVariable Long id) {
+        return new ResponseEntity<>(bookService.getBookById(id),HttpStatus.OK);
     }
 
     @PostMapping
-    public ResponseEntity<Book> addBook(@RequestBody Book book) {
-        Book newBook = bookService.addBook(book);
-        return ResponseEntity.status(HttpStatus.CREATED).body(newBook);
+    public ResponseEntity<BookResponse> addBook(@Valid @RequestBody BookResponse book) {
+        BookResponse newBook = bookService.addBook(book);
+        return new ResponseEntity<>(newBook,HttpStatus.CREATED);
+    }
+
+    @PostMapping("/{id}")
+    public ResponseEntity<BookResponse> updateBookById(@PathVariable Long id, @Valid @RequestBody BookResponse book) {
+        BookResponse bookResponse = bookService.addBook(book);
+        return new ResponseEntity<>(bookResponse,HttpStatus.OK);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book updatedBook) {
+    public ResponseEntity<BookResponse> updateBook(@PathVariable Long id, @Valid @RequestBody BookResponse updatedBook) {
         try {
-            Book updated = bookService.updateBook(id, updatedBook);
+            BookResponse updated = bookService.updateBook(id, updatedBook);
             return ResponseEntity.ok().body(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
@@ -49,8 +53,8 @@ public class BookController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
+    public ResponseEntity<String> deleteBook(@PathVariable Long id) {
         bookService.deleteBook(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("Book with id " + id + " has been deleted");
     }
 }
